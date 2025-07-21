@@ -1,10 +1,10 @@
 use aes_gcm::{
-    aead::{Aead, KeyInit},
     Aes256Gcm, Nonce,
+    aead::{Aead, KeyInit},
 };
 use anyhow::Result;
 use hkdf::Hkdf;
-use k256::{elliptic_curve::sec1::ToEncodedPoint, PublicKey, Scalar, SecretKey};
+use k256::{PublicKey, Scalar, SecretKey, elliptic_curve::sec1::ToEncodedPoint};
 use rand_core::{OsRng, RngCore};
 use sha2::Sha256;
 
@@ -101,4 +101,42 @@ pub fn decrypt(ciphertext_bytes: &[u8], recipient_priv_key: &PrivKey) -> Result<
     let nonce = Nonce::from_slice(iv);
     let decrypted_bytes = cipher.decrypt(nonce, ciphertext);
     decrypted_bytes.map_err(|_| anyhow::anyhow!("Decryption failed"))
+}
+
+pub fn encrypt_padded(
+    message: &[u8],
+    recipient_pub_key: &PubKey,
+    padded_length: usize,
+) -> Result<Vec<u8>> {
+    if padded_length < message.len() + 4 {
+        return Err(anyhow::anyhow!(
+            "Padded length ({} bytes) shorter than the message length ({} bytes + 4 bytes for length info)",
+            padded_length,
+            message.len()
+        ));
+    }
+    // prepend with the message length info in little endian (4 bytes)
+    let mut padded_message: Vec<u8> = (message.len() as u32).to_le_bytes().to_vec();
+    padded_message.extend(message);
+    padded_message.resize(padded_length, 0u8);
+    Ok(encrypt(&padded_message, recipient_pub_key))
+}
+
+pub fn decrypt_padded(ciphertext_bytes: &[u8], recipient_priv_key: &PrivKey) -> Result<Vec<u8>> {
+    let padded_message = decrypt(ciphertext_bytes, recipient_priv_key)?;
+    if padded_message.len() < 4 {
+        return Err(anyhow::anyhow!(
+            "Padded message shorter than 4 bytes ({} bytes)",
+            padded_message.len()
+        ));
+    }
+    let message_len = u32::from_le_bytes(padded_message[0..4].try_into()?) as usize;
+    if message_len > padded_message.len() - 4 {
+        return Err(anyhow::anyhow!(
+            "Message length ({} bytes + 4 bytes for length info) greater than the padded message length ({} bytes)",
+            message_len,
+            padded_message.len()
+        ));
+    }
+    Ok(padded_message[4..(message_len + 4)].to_vec())
 }
