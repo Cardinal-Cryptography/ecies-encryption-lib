@@ -10,4 +10,4 @@ aes-gcm = { version = "0.10", features = ["std"] }
 rand_core = "0.6.4"
 sha2 = "0.10"
 hex = "0.4"
-anyhow = "1.0"
+thiserror = "2.0.12"
