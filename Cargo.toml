@@ -1,13 +1,7 @@
-[package]
-name = "ecies-encryption-lib"
-version = "0.1.0"
-edition = "2024"
+[workspace]
+resolver = "2"
 
-[dependencies]
-k256 = { version = "0.13", features = ["ecdsa"] }
-hkdf = "0.12"
-aes-gcm = { version = "0.10", features = ["std"] }
-rand_core = "0.6.4"
-sha2 = "0.10"
-hex = "0.4"
-thiserror = "2.0.12"
+members = ["rust/*"]
+
+[workspace.dependencies]
+ecies-encryption-lib = { path = "rust/lib" }

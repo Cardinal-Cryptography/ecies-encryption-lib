@@ -1,0 +1,10 @@
+{
+  "devDependencies": {
+    "@types/node": "^24.0.4",
+    "typescript": "^5.8.3",
+    "tsx": "^4.20.3"
+  },
+  "scripts": {
+    "build": "pnpm -r build"
+  }
+}
