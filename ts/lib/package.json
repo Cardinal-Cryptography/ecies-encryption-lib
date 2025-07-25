@@ -1,7 +1,6 @@
 {
   "name": "@cardinal-cryptography/ecies-encryption-lib",
   "author": "CardinalCryptography",
-  "license": "ISC",
   "version": "1.0.0",
   "type": "module",
   "main": "dist/index.js",
