@@ -29,17 +29,17 @@ async function hkdf(
 ): Promise<CryptoKey> {
   const keyMaterial = await cryptoAPI.subtle.importKey(
     "raw",
-    sharedSecret,
+    sharedSecret as BufferSource,
     "HKDF",
     false,
     ["deriveKey"]
   );
-  return cryptoAPI.subtle.deriveKey(
+  return await cryptoAPI.subtle.deriveKey(
     {
       name: "HKDF",
       hash: "SHA-256",
       salt: new Uint8Array([]),
-      info: new TextEncoder().encode("ecies-secp256k1-v1"),
+      info: new TextEncoder().encode("ecies-secp256k1-v1") as BufferSource,
     },
     keyMaterial,
     { name: "AES-GCM", length: 256 },
@@ -66,7 +66,7 @@ async function _encrypt(
   const ciphertextBuffer = await cryptoAPI.subtle.encrypt(
     { name: "AES-GCM", iv },
     aesKey,
-    message
+    message as BufferSource
   );
   const ciphertext = new Uint8Array(ciphertextBuffer);
 
@@ -96,7 +96,7 @@ async function _decrypt(
   const plaintextBuffer = await cryptoAPI.subtle.decrypt(
     { name: "AES-GCM", iv },
     aesKey,
-    ciphertext
+    ciphertext as BufferSource
   );
   return new Uint8Array(plaintextBuffer);
 }
