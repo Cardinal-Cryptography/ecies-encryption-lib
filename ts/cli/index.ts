@@ -8,7 +8,7 @@ import {
   encrypt,
   decrypt,
   encryptPadded,
-  decryptPadded
+  decryptPaddedUnchecked
 } from "@cardinal-cryptography/ecies-encryption-lib";
 
 const program = new Command();
@@ -64,7 +64,7 @@ program
   .requiredOption("-c, --ciphertext <hex>", "Ciphertext (hex)")
   .action(async (opts: { privkey: string; ciphertext: string }) => {
     const cryptoAPI = await getCrypto();
-    const result = await decryptPadded(opts.ciphertext, opts.privkey, cryptoAPI);
+    const result = await decryptPaddedUnchecked(opts.ciphertext, opts.privkey, cryptoAPI);
     console.log(result);
   });
 

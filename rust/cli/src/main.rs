@@ -1,7 +1,7 @@
 use anyhow::{Context, Result};
 use clap::{Parser, Subcommand};
 use ecies_encryption_lib::{
-    PrivKey, PubKey, decrypt, decrypt_padded, encrypt, encrypt_padded, generate_keypair,
+    PrivKey, PubKey, decrypt, decrypt_padded_unchecked, encrypt, encrypt_padded, generate_keypair,
     utils::{from_hex, to_hex},
 };
 
@@ -150,8 +150,8 @@ fn main() -> Result<()> {
 
             let ciphertext_bytes = from_hex(&ciphertext).context("Invalid ciphertext hex")?;
 
-            let decrypted =
-                decrypt_padded(&ciphertext_bytes, &privkey).context("Decryption failed")?;
+            let decrypted = decrypt_padded_unchecked(&ciphertext_bytes, &privkey)
+                .context("Decryption failed")?;
             println!("{}", String::from_utf8(decrypted)?);
         }
     }

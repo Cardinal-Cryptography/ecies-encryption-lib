@@ -15,7 +15,7 @@ export async function getCrypto(): Promise<Crypto> {
     : ((await import("node:crypto")).webcrypto as Crypto);
 }
 
-type Keypair = { sk: Uint8Array; pk: Uint8Array };
+export type Keypair = { sk: Uint8Array; pk: Uint8Array };
 
 export function generateKeypair(): Keypair {
   const sk = secp.utils.randomPrivateKey();
@@ -153,6 +153,25 @@ export async function encryptPadded(
 export async function decryptPadded(
   ciphertextHex: string,
   recipientSkHex: string,
+  cryptoAPI: Crypto,
+  paddedLength: number
+): Promise<string> {
+  const decrypted = await _decrypt(
+    fromHex(ciphertextHex),
+    recipientSkHex,
+    cryptoAPI
+  );
+  if (decrypted.length != paddedLength) {
+    throw new Error(
+      `Invalid padded length ${decrypted.length} bytes, expected ${paddedLength} bytes)`
+    );
+  }
+  return decodePadded(decrypted);
+}
+
+export async function decryptPaddedUnchecked(
+  ciphertextHex: string,
+  recipientSkHex: string,
   cryptoAPI: Crypto
 ): Promise<string> {
   const decrypted = await _decrypt(
@@ -160,23 +179,27 @@ export async function decryptPadded(
     recipientSkHex,
     cryptoAPI
   );
-  if (decrypted.length < 4) {
+  return await decodePadded(decrypted);
+}
+
+async function decodePadded(paddedMessage: Uint8Array): Promise<string> {
+  if (paddedMessage.length < 4) {
     throw new Error(
       `Invalid padded length ${
-        decrypted.length
+        paddedMessage.length
       } bytes, expected at least ${4} bytes)`
     );
   }
-  const view = new DataView(decrypted.buffer);
+  const view = new DataView(paddedMessage.buffer);
   const messageLength = view.getUint32(0, true);
 
-  if (messageLength > decrypted.length - 4) {
+  if (messageLength > paddedMessage.length - 4) {
     throw new Error(
       `Invalid message length ${messageLength} bytes, expected at most ${
-        decrypted.length - 4
+        paddedMessage.length - 4
       } bytes)`
     );
   }
 
-  return new TextDecoder().decode(decrypted.subarray(4, messageLength + 4));
+  return new TextDecoder().decode(paddedMessage.subarray(4, messageLength + 4));
 }

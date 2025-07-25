@@ -123,8 +123,30 @@ pub fn encrypt_padded(
     Ok(encrypt(&padded_message, recipient_pub_key))
 }
 
-pub fn decrypt_padded(ciphertext_bytes: &[u8], recipient_priv_key: &PrivKey) -> Result<Vec<u8>> {
+pub fn decrypt_padded_unchecked(
+    ciphertext_bytes: &[u8],
+    recipient_priv_key: &PrivKey,
+) -> Result<Vec<u8>> {
     let padded_message = decrypt(ciphertext_bytes, recipient_priv_key)?;
+    _decode_padded(&padded_message)
+}
+
+pub fn decrypt_padded(
+    ciphertext_bytes: &[u8],
+    recipient_priv_key: &PrivKey,
+    padded_length: usize,
+) -> Result<Vec<u8>> {
+    let padded_message = decrypt(ciphertext_bytes, recipient_priv_key)?;
+    if padded_message.len() != padded_length {
+        return Err(Error::InvalidPaddedLength {
+            found: padded_message.len(),
+            expected: padded_length,
+        });
+    }
+    _decode_padded(&padded_message)
+}
+
+fn _decode_padded(padded_message: &[u8]) -> Result<Vec<u8>> {
     // decode the original message length
     let message_length = u32::from_le_bytes(
         padded_message
