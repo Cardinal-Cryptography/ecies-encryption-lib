@@ -19,7 +19,7 @@ pub struct PubKey {
 
 impl PubKey {
     pub fn from_bytes(bytes: &[u8]) -> Result<Self> {
-        let key = PublicKey::from_sec1_bytes(&bytes)?;
+        let key = PublicKey::from_sec1_bytes(bytes)?;
         Ok(PubKey { key })
     }
 
@@ -72,7 +72,7 @@ pub fn encrypt(message: &[u8], recipient_pub_key: &PubKey) -> Vec<u8> {
     let eph_sk = SecretKey::random(&mut OsRng);
     let eph_pk = eph_sk.public_key();
 
-    let shared_secret = derive_shared_secret(&eph_sk, &recipient_pk);
+    let shared_secret = derive_shared_secret(&eph_sk, recipient_pk);
     let aes_key = hkdf_expand(&shared_secret);
     let cipher = Aes256Gcm::new_from_slice(&aes_key).unwrap();
 
