@@ -75,7 +75,7 @@ enum Commands {
         #[arg(short, long)]
         message: String,
 
-        #[arg(short, long)]
+        #[arg(long)]
         ///
         padded_length: usize,
     },

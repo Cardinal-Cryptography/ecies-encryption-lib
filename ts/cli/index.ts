@@ -50,6 +50,7 @@ program
   .description("Encrypt a plaintext message with a public key")
   .requiredOption("-p, --pubkey <hex>", "Recipient public key (hex)")
   .requiredOption("-m, --message <text>", "Plaintext message to encrypt")
+  .requiredOption("--padded-length <number>", "Padded length of the message")
   .action(async (opts: { message: string; pubkey: string; paddedLength: number }) => {
     const cryptoAPI = await getCrypto();
     const hex = await encryptPadded(opts.message, opts.pubkey, cryptoAPI, opts.paddedLength);
