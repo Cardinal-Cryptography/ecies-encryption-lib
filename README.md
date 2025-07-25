@@ -61,4 +61,4 @@ pnpm tsx ./ts/cli/index.ts decrypt --privkey <hex> --ciphertext <hex>
 
 ## WARNING
 
-Using encrypt or decrypt directly does not hide plaintext length which might be a problem in some cases. One needs do further work in order to fix that (add padding carefully).
+Using encrypt or decrypt directly does not hide plaintext length which might be a problem in some cases. Use `encrypt-padded` and `decrypt-padded` to change the original plaintext length (add padding carefully).
