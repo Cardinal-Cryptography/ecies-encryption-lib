@@ -11,7 +11,7 @@
     "directory": "ts/lib"
   },
   "files": [
-    "ts/lib/dist"
+    "ts/lib"
   ],
   "exports": {
     ".": {
