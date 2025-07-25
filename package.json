@@ -11,7 +11,7 @@
     "directory": "ts/lib"
   },
   "files": [
-    "ts/lib/dist"
+    "ts/lib"
   ],
   "exports": {
     ".": {
@@ -21,7 +21,8 @@
     }
   },
   "scripts": {
-    "build": "pnpm --filter ./ts/lib... build"
+    "build": "pnpm --filter ./ts/lib... build",
+    "prepare": "pnpm run build"
   },
   "devDependencies": {
     "@types/node": "^24.0.4",
