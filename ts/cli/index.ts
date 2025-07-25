@@ -7,6 +7,8 @@ import {
   getCrypto,
   encrypt,
   decrypt,
+  encryptPadded,
+  decryptPadded
 } from "@cardinal-cryptography/ecies-encryption-lib";
 
 const program = new Command();
@@ -40,6 +42,28 @@ program
   .action(async (opts: { privkey: string; ciphertext: string }) => {
     const cryptoAPI = await getCrypto();
     const result = await decrypt(opts.ciphertext, opts.privkey, cryptoAPI);
+    console.log(result);
+  });
+
+  program
+  .command("encrypt-padded")
+  .description("Encrypt a plaintext message with a public key")
+  .requiredOption("-p, --pubkey <hex>", "Recipient public key (hex)")
+  .requiredOption("-m, --message <text>", "Plaintext message to encrypt")
+  .action(async (opts: { message: string; pubkey: string; paddedLength: number }) => {
+    const cryptoAPI = await getCrypto();
+    const hex = await encryptPadded(opts.message, opts.pubkey, cryptoAPI, opts.paddedLength);
+    console.log(hex);
+  });
+
+program
+  .command("decrypt-padded")
+  .description("Decrypt a ciphertext with a private key")
+  .requiredOption("-k, --privkey <hex>", "Private key (hex)")
+  .requiredOption("-c, --ciphertext <hex>", "Ciphertext (hex)")
+  .action(async (opts: { privkey: string; ciphertext: string }) => {
+    const cryptoAPI = await getCrypto();
+    const result = await decryptPadded(opts.ciphertext, opts.privkey, cryptoAPI);
     console.log(result);
   });
 

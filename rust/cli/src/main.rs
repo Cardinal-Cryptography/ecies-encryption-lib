@@ -1,6 +1,9 @@
+use anyhow::{Context, Result};
 use clap::{Parser, Subcommand};
-use ecies_encryption_lib::{decrypt, encrypt, generate_keypair, PubKey, PrivKey, utils::{to_hex, from_hex}};
-use anyhow::{Result, Context};
+use ecies_encryption_lib::{
+    PrivKey, PubKey, decrypt, decrypt_padded, encrypt, encrypt_padded, generate_keypair,
+    utils::{from_hex, to_hex},
+};
 
 fn example() -> Result<()> {
     let (sk, pk) = generate_keypair();
@@ -12,14 +15,20 @@ fn example() -> Result<()> {
 
     let message = "hello from Rust";
     let ciphertext_bytes = encrypt(message.as_bytes(), &pk);
-    println!("Ciphertext hex: {} (len: {})", to_hex(&ciphertext_bytes), ciphertext_bytes.len() );
-    println!("Diff to plaintext: {}", ciphertext_bytes.len() - message.len());
+    println!(
+        "Ciphertext hex: {} (len: {})",
+        to_hex(&ciphertext_bytes),
+        ciphertext_bytes.len()
+    );
+    println!(
+        "Diff to plaintext: {}",
+        ciphertext_bytes.len() - message.len()
+    );
 
     let recovered = decrypt(&ciphertext_bytes, &sk)?;
     println!("Decrypted: {}", String::from_utf8(recovered)?);
     Ok(())
 }
-
 
 /// ECIES CLI: Encrypt, decrypt, and generate keys using secp256k1
 #[derive(Parser)]
@@ -56,7 +65,32 @@ enum Commands {
         #[arg(short, long)]
         ciphertext: String,
     },
-    Example
+    /// Encrypt a plaintext message with a public key and padding
+    EncryptPadded {
+        /// Public key (hex)
+        #[arg(short, long)]
+        pubkey: String,
+
+        /// Message to encrypt (or file path if --file is passed)
+        #[arg(short, long)]
+        message: String,
+
+        #[arg(short, long)]
+        ///
+        padded_length: usize,
+    },
+
+    /// Decrypt a padded ciphertext with a private key
+    DecryptPadded {
+        /// Private key (hex)
+        #[arg(short, long)]
+        privkey: String,
+
+        /// Ciphertext in hex (or file path if --file is passed)
+        #[arg(short, long)]
+        ciphertext: String,
+    },
+    Example,
 }
 
 fn main() -> Result<()> {
@@ -68,33 +102,59 @@ fn main() -> Result<()> {
             println!("Private key: {}", to_hex(&sk.to_bytes()));
             println!("Public key:  {}", to_hex(&pk.to_bytes()));
         }
-
         Commands::Encrypt { pubkey, message } => {
             let pubkey_bytes = from_hex(&pubkey)?;
             let pubkey = PubKey::from_bytes(&pubkey_bytes).context("Failed to parse public key")?;
 
-            let message_bytes =                message.as_bytes().to_vec();
+            let message_bytes = message.as_bytes().to_vec();
 
             let ciphertext = encrypt(&message_bytes, &pubkey);
             println!("{}", to_hex(&ciphertext));
         }
-
-        Commands::Decrypt { privkey, ciphertext } => {
+        Commands::Decrypt {
+            privkey,
+            ciphertext,
+        } => {
             let privkey_bytes = from_hex(&privkey).context("Invalid private key hex")?;
-            let privkey = PrivKey::from_bytes(&privkey_bytes).context("Failed to parse private key")?;
+            let privkey =
+                PrivKey::from_bytes(&privkey_bytes).context("Failed to parse private key")?;
 
-            let ciphertext_bytes =
-                from_hex(&ciphertext).context("Invalid ciphertext hex")?;
+            let ciphertext_bytes = from_hex(&ciphertext).context("Invalid ciphertext hex")?;
 
-            let decrypted = decrypt(&ciphertext_bytes, &privkey)
-                .context("Decryption failed")?;
+            let decrypted = decrypt(&ciphertext_bytes, &privkey).context("Decryption failed")?;
             println!("{}", String::from_utf8(decrypted)?);
         }
         Commands::Example => {
             example()?;
         }
+        Commands::EncryptPadded {
+            pubkey,
+            message,
+            padded_length,
+        } => {
+            let pubkey_bytes = from_hex(&pubkey)?;
+            let pubkey = PubKey::from_bytes(&pubkey_bytes).context("Failed to parse public key")?;
+
+            let message_bytes = message.as_bytes().to_vec();
+
+            let ciphertext = encrypt_padded(&message_bytes, &pubkey, padded_length)?;
+            println!("{}", to_hex(&ciphertext));
+        }
+        Commands::DecryptPadded {
+            privkey,
+            ciphertext,
+        } => {
+            let privkey_bytes = from_hex(&privkey).context("Invalid private key hex")?;
+            let privkey =
+                PrivKey::from_bytes(&privkey_bytes).context("Failed to parse private key")?;
+
+            let ciphertext_bytes = from_hex(&ciphertext).context("Invalid ciphertext hex")?;
+
+            let decrypted =
+                decrypt_padded(&ciphertext_bytes, &privkey).context("Decryption failed")?;
+            println!("{}", String::from_utf8(decrypted)?);
+        }
     }
 
     Ok(())
 }
-
