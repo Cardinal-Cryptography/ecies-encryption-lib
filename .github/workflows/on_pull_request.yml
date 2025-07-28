@@ -20,4 +20,4 @@ jobs:
                 
         - name: Integration tests
           shell: bash
-          run: ./tests/integration.sh
+          run: ./tests/integration-test.sh
