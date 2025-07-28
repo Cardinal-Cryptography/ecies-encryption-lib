@@ -14,7 +14,7 @@ fn example() -> Result<()> {
     println!("Public key:  {} (len: {})", pk_hex, pk_hex.len() / 2);
 
     let message = "hello from Rust";
-    let ciphertext_bytes = encrypt(message.as_bytes(), &pk);
+    let ciphertext_bytes = encrypt(message.as_bytes(), &pk)?;
     println!(
         "Ciphertext hex: {} (len: {})",
         to_hex(&ciphertext_bytes),
@@ -108,7 +108,7 @@ fn main() -> Result<()> {
 
             let message_bytes = message.as_bytes().to_vec();
 
-            let ciphertext = encrypt(&message_bytes, &pubkey);
+            let ciphertext = encrypt(&message_bytes, &pubkey)?;
             println!("{}", to_hex(&ciphertext));
         }
         Commands::Decrypt {

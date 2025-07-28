@@ -60,49 +60,49 @@ fn derive_shared_secret(sk: &SecretKey, pk: &PublicKey) -> Vec<u8> {
     encoded.to_bytes().to_vec()
 }
 
-fn hkdf_expand(shared_secret: &[u8]) -> [u8; 32] {
+fn hkdf_expand(shared_secret: &[u8]) -> Result<[u8; 32]> {
     let hk = Hkdf::<Sha256>::new(None, shared_secret);
     let mut okm = [0u8; 32];
-    hk.expand(b"ecies-secp256k1-v1", &mut okm).unwrap();
-    okm
+    hk.expand(b"ecies-secp256k1-v1", &mut okm)?;
+    Ok(okm)
 }
 
-pub fn encrypt(message: &[u8], recipient_pub_key: &PubKey) -> Vec<u8> {
+pub fn encrypt(message: &[u8], recipient_pub_key: &PubKey) -> Result<Vec<u8>> {
     let recipient_pk = &recipient_pub_key.key;
     let eph_sk = SecretKey::random(&mut OsRng);
     let eph_pk = eph_sk.public_key();
 
     let shared_secret = derive_shared_secret(&eph_sk, recipient_pk);
-    let aes_key = hkdf_expand(&shared_secret);
-    let cipher = Aes256Gcm::new_from_slice(&aes_key).unwrap();
+    let aes_key = hkdf_expand(&shared_secret)?;
+    let cipher = Aes256Gcm::new_from_slice(&aes_key)?;
 
     let mut iv = [0u8; 12];
     OsRng.fill_bytes(&mut iv);
     let nonce = Nonce::from_slice(&iv);
 
-    let ciphertext = cipher.encrypt(nonce, message).unwrap();
+    let ciphertext = cipher.encrypt(nonce, message)?;
 
     let mut output = vec![];
     output.extend(eph_pk.to_encoded_point(true).as_bytes());
     output.extend(&iv);
     output.extend(&ciphertext);
-    output
+    Ok(output)
 }
 
 pub fn decrypt(ciphertext_bytes: &[u8], recipient_priv_key: &PrivKey) -> Result<Vec<u8>> {
     let data = ciphertext_bytes;
-    let eph_pk = PublicKey::from_sec1_bytes(&data[..33]).unwrap();
+    let eph_pk = PublicKey::from_sec1_bytes(&data[..33])?;
     let iv = &data[33..45];
     let ciphertext = &data[45..];
     let recipient_sk = recipient_priv_key.key.clone();
 
     let shared_secret = derive_shared_secret(&recipient_sk, &eph_pk);
-    let aes_key = hkdf_expand(&shared_secret);
-    let cipher = Aes256Gcm::new_from_slice(&aes_key).unwrap();
+    let aes_key = hkdf_expand(&shared_secret)?;
+    let cipher = Aes256Gcm::new_from_slice(&aes_key)?;
 
     let nonce = Nonce::from_slice(iv);
-    let decrypted_bytes = cipher.decrypt(nonce, ciphertext);
-    decrypted_bytes.map_err(|_| Error::Decryption)
+    let decrypted_bytes = cipher.decrypt(nonce, ciphertext)?;
+    Ok(decrypted_bytes)
 }
 
 pub fn encrypt_padded(
@@ -120,7 +120,7 @@ pub fn encrypt_padded(
     let mut padded_message = (message.len() as u32).to_le_bytes().to_vec();
     padded_message.extend(message);
     padded_message.resize(padded_length, 0u8);
-    Ok(encrypt(&padded_message, recipient_pub_key))
+    encrypt(&padded_message, recipient_pub_key)
 }
 
 pub fn decrypt_padded_unchecked(
@@ -156,7 +156,7 @@ fn _decode_padded(padded_message: &[u8]) -> Result<Vec<u8>> {
                 expected: 4,
             })?
             .try_into()
-            .unwrap(),
+            .map_err(|_| Error::Decoding("Message length".to_string()))?,
     ) as usize;
     // extract the original message
     padded_message

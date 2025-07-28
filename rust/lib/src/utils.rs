@@ -5,5 +5,5 @@ pub fn to_hex(data: &[u8]) -> String {
 }
 
 pub fn from_hex(hex_str: &str) -> Result<Vec<u8>> {
-    hex::decode(hex_str).map_err(Error::Decoding)
+    hex::decode(hex_str).map_err(|e| Error::Decoding(e.to_string()))
 }
