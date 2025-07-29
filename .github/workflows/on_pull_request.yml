@@ -1,0 +1,23 @@
+---
+name: PR commit
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  integration-test:
+    runs-on: ubuntu-latest
+    steps:
+        - uses: actions/checkout@v4
+        - uses: actions-rust-lang/setup-rust-toolchain@v1
+        - uses: actions/setup-node@v4
+          with:
+            node-version: 23
+        - uses: pnpm/action-setup@v4
+          with:
+            version: 10.2.0
+                
+        - name: Integration tests
+          shell: bash
+          run: ./tests/integration-test.sh

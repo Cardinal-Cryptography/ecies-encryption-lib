@@ -1,0 +1,32 @@
+{
+  "name": "@cardinal-cryptography/ecies-encryption-lib",
+  "author": "CardinalCryptography",
+  "version": "0.1.0",
+  "description": "ECIES encryption library (proxy to ts/lib)",
+  "main": "ts/lib/dist/index.js",
+  "types": "ts/lib/dist/index.d.ts",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Cardinal-Cryptography/ecies-encryption-lib.git",
+    "directory": "ts/lib"
+  },
+  "files": [
+    "ts/lib"
+  ],
+  "exports": {
+    ".": {
+      "import": "./ts/lib/dist/index.js",
+      "require": "./ts/lib/dist/index.js",
+      "types": "./ts/lib/dist/index.d.ts"
+    }
+  },
+  "scripts": {
+    "build": "pnpm --filter ./ts/lib... build",
+    "prepare": "pnpm run build"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.4",
+    "typescript": "^5.8.3",
+    "tsx": "^4.20.3"
+  }
+}
