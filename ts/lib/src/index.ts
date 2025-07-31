@@ -1,13 +1,22 @@
 import * as secp from "@noble/secp256k1";
 import { TextEncoder, TextDecoder } from "util";
 
-export function toHex(buf: Uint8Array): string {
-  return Buffer.from(buf).toString("hex");
+
+export function toHex(uint8: Uint8Array): string {
+  return Array.from(uint8)
+    .map((byte) => byte.toString(16).padStart(2, "0"))
+    .join("");
 }
 
 export function fromHex(hex: string): Uint8Array {
-  return new Uint8Array(Buffer.from(hex, "hex"));
-}
+  if (hex.length % 2 !== 0) {
+    throw new Error("Hex string must have an even length");
+  }
+  const bytes = new Uint8Array(hex.length / 2);
+  for (let i = 0; i < hex.length; i += 2) {
+    bytes[i / 2] = parseInt(hex.slice(i, i + 2), 16);
+  }
+  return bytes;}
 
 export async function getCrypto(): Promise<Crypto> {
   return typeof globalThis.crypto !== "undefined"
@@ -125,7 +134,7 @@ export async function decrypt(
 }
 
 export async function encryptPadded(
-  message: string,
+  message: string | Uint8Array,
   recipientPubHex: string,
   cryptoAPI: Crypto,
   paddedLength: number
@@ -145,7 +154,9 @@ export async function encryptPadded(
   view.setUint32(0, message.length, true);
   encoded.set(new Uint8Array(buffer), 0);
 
-  encoded.set(new TextEncoder().encode(message), 4);
+  const encodedMessage = message instanceof Uint8Array ? message : new TextEncoder().encode(message);
+
+  encoded.set(encodedMessage, 4);
   const encrypted = await _encrypt(encoded, recipientPubHex, cryptoAPI);
   return toHex(encrypted);
 }
