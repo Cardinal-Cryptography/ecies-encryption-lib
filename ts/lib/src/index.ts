@@ -16,7 +16,8 @@ export function fromHex(hex: string): Uint8Array {
   for (let i = 0; i < hex.length; i += 2) {
     bytes[i / 2] = parseInt(hex.slice(i, i + 2), 16);
   }
-  return bytes;}
+  return bytes;
+}
 
 export async function getCrypto(): Promise<Crypto> {
   return typeof globalThis.crypto !== "undefined"
