@@ -8,24 +8,25 @@ export function generateKeypair(): Keypair {
   return { sk, pk };
 }
 
-export function fromHex(hex: Uint8Array | string): Uint8Array {
-  return isBytes(hex)
-    ? Uint8Array.from(hex as any)
-    : secp.hexToBytes(removePrefix(hex as string));
+export async function getCrypto(): Promise<Crypto> {
+  return typeof globalThis.crypto !== "undefined"
+  ? globalThis.crypto
+  : ((await import("node:crypto")).webcrypto as Crypto);
 }
 
 export function toHex(uint8: Uint8Array, withPrefix: boolean = false): string {
   const hex = Array.from(uint8)
-    .map((byte) => byte.toString(16).padStart(2, "0"))
-    .join("");
+  .map((byte) => byte.toString(16).padStart(2, "0"))
+  .join("");
   return withPrefix ? "0x" + hex : hex;
 }
 
-export async function getCrypto(): Promise<Crypto> {
-  return typeof globalThis.crypto !== "undefined"
-    ? globalThis.crypto
-    : ((await import("node:crypto")).webcrypto as Crypto);
+export function fromHex(hex: Uint8Array | string): Uint8Array {
+  return isBytes(hex)
+    ? Uint8Array.from(hex as any)
+    : fromStringHex(hex as string);
 }
+
 
 function isBytes(bytes: Uint8Array | string): boolean {
   return (
@@ -34,8 +35,16 @@ function isBytes(bytes: Uint8Array | string): boolean {
   );
 }
 
-function removePrefix(hex: string): string {
-  return hex.startsWith("0x") || hex.startsWith("0X") ? hex.slice(2) : hex;
+function fromStringHex(hex: string): Uint8Array {
+  hex = hex.startsWith("0x") || hex.startsWith("0X") ? hex.slice(2) : hex;
+  if (hex.length % 2 !== 0) {
+    throw new Error("Hex string must have an even length");
+  }
+  const bytes = new Uint8Array(hex.length / 2);
+  for (let i = 0; i < hex.length; i += 2) {
+    bytes[i / 2] = parseInt(hex.slice(i, i + 2), 16);
+  }
+  return bytes;
 }
 
 export async function encrypt(
