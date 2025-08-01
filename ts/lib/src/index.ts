@@ -1,7 +1,6 @@
 import * as secp from "@noble/secp256k1";
-// import { getCrypto, generateKeypair, toHex, fromHex } from "./utils";
-import { Keypair, getCrypto, generateKeypair, fromHex, toHex } from "./utils";
-export { Keypair, getCrypto, generateKeypair, toHex, fromHex };
+import { fromHex, toHex } from "./utils";
+export * from "./utils";
 
 export async function encrypt(
   message: string,
