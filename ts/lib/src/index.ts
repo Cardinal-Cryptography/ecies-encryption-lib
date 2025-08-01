@@ -1,20 +1,24 @@
 import * as secp from "@noble/secp256k1";
 
-export function toHex(uint8: Uint8Array): string {
-  return Array.from(uint8)
-    .map((byte) => byte.toString(16).padStart(2, "0"))
-    .join("");
+export type Keypair = { sk: Uint8Array; pk: Uint8Array };
+
+export function generateKeypair(): Keypair {
+  const sk = secp.utils.randomPrivateKey();
+  const pk = secp.getPublicKey(sk, true);
+  return { sk, pk };
 }
 
-export function fromHex(hex: string): Uint8Array {
-  if (hex.length % 2 !== 0) {
-    throw new Error("Hex string must have an even length");
-  }
-  const bytes = new Uint8Array(hex.length / 2);
-  for (let i = 0; i < hex.length; i += 2) {
-    bytes[i / 2] = parseInt(hex.slice(i, i + 2), 16);
-  }
-  return bytes;
+export function fromHex(hex: Uint8Array | string): Uint8Array {
+  return isBytes(hex)
+    ? Uint8Array.from(hex as any)
+    : secp.hexToBytes(removePrefix(hex as string));
+}
+
+export function toHex(uint8: Uint8Array, withPrefix: boolean = false): string {
+  const hex = Array.from(uint8)
+    .map((byte) => byte.toString(16).padStart(2, "0"))
+    .join("");
+  return withPrefix ? "0x" + hex : hex;
 }
 
 export async function getCrypto(): Promise<Crypto> {
@@ -23,12 +27,102 @@ export async function getCrypto(): Promise<Crypto> {
     : ((await import("node:crypto")).webcrypto as Crypto);
 }
 
-export type Keypair = { sk: Uint8Array; pk: Uint8Array };
+function isBytes(bytes: Uint8Array | string): boolean {
+  return (
+    bytes instanceof Uint8Array ||
+    (ArrayBuffer.isView(bytes) && bytes.constructor.name === "Uint8Array")
+  );
+}
 
-export function generateKeypair(): Keypair {
-  const sk = secp.utils.randomPrivateKey();
-  const pk = secp.getPublicKey(sk, true);
-  return { sk, pk };
+function removePrefix(hex: string): string {
+  return hex.startsWith("0x") || hex.startsWith("0X") ? hex.slice(2) : hex;
+}
+
+export async function encrypt(
+  message: string,
+  recipientPubHex: string,
+  cryptoAPI: Crypto
+): Promise<string> {
+  const encoded = new TextEncoder().encode(message);
+  const out = await _encrypt(encoded, fromHex(recipientPubHex), cryptoAPI);
+  return toHex(out);
+}
+
+export async function decrypt(
+  ciphertextHex: string,
+  recipientSkHex: string,
+  cryptoAPI: Crypto
+): Promise<string> {
+  const decrypted = await _decrypt(
+    fromHex(ciphertextHex),
+    fromHex(recipientSkHex),
+    cryptoAPI
+  );
+  return new TextDecoder().decode(decrypted);
+}
+
+export async function encryptPadded(
+  message: string,
+  recipientPubHex: string,
+  cryptoAPI: Crypto,
+  paddedLength: number
+): Promise<string> {
+  if (paddedLength < message.length + 4) {
+    throw new Error(
+      `Invalid padded length ${paddedLength} bytes, expected at least ${
+        message.length + 4
+      } bytes)`
+    );
+  }
+  let encoded = new Uint8Array(paddedLength);
+
+  // prepend with the message length info in little endian (4 bytes)
+  const buffer = new ArrayBuffer(4);
+  const view = new DataView(buffer);
+  view.setUint32(0, message.length, true);
+  encoded.set(new Uint8Array(buffer), 0);
+
+  const encodedMessage = new TextEncoder().encode(message);
+
+  encoded.set(encodedMessage, 4);
+  const encrypted = await _encrypt(
+    encoded,
+    fromHex(recipientPubHex),
+    cryptoAPI
+  );
+  return toHex(encrypted);
+}
+
+export async function decryptPadded(
+  ciphertextHex: string,
+  recipientSkHex: string,
+  cryptoAPI: Crypto,
+  paddedLength: number
+): Promise<string> {
+  const decrypted = await _decrypt(
+    fromHex(ciphertextHex),
+    fromHex(recipientSkHex),
+    cryptoAPI
+  );
+  if (decrypted.length != paddedLength) {
+    throw new Error(
+      `Invalid padded length ${decrypted.length} bytes, expected ${paddedLength} bytes)`
+    );
+  }
+  return decodePadded(decrypted);
+}
+
+export async function decryptPaddedUnchecked(
+  ciphertextHex: string,
+  recipientSkHex: string,
+  cryptoAPI: Crypto
+): Promise<string> {
+  const decrypted = await _decrypt(
+    fromHex(ciphertextHex),
+    fromHex(recipientSkHex),
+    cryptoAPI
+  );
+  return await decodePadded(decrypted);
 }
 
 async function hkdf(
@@ -58,14 +152,14 @@ async function hkdf(
 
 async function _encrypt(
   message: Uint8Array,
-  recipientPubHex: string,
+  recipientPk: Uint8Array,
   cryptoAPI: Crypto
 ): Promise<Uint8Array> {
-  const recipientPub = secp.Point.fromHex(recipientPubHex);
+  const recipientPub = secp.Point.fromHex(recipientPk);
   const ephSk = secp.utils.randomPrivateKey();
   const ephPk = secp.getPublicKey(ephSk, true);
 
-  const ephSkBigInt = BigInt("0x" + toHex(ephSk));
+  const ephSkBigInt = BigInt(toHex(ephSk, true));
   const shared = recipientPub.multiply(ephSkBigInt).toRawBytes(true);
   const aesKey = await hkdf(shared, cryptoAPI);
 
@@ -88,15 +182,14 @@ async function _encrypt(
 
 async function _decrypt(
   ciphertextBytes: Uint8Array,
-  recipientSkHex: string,
+  recipientSkBytes: Uint8Array,
   cryptoAPI: Crypto
 ): Promise<Uint8Array> {
   const ephPk = secp.Point.fromHex(ciphertextBytes.slice(0, 33));
   const iv = ciphertextBytes.slice(33, 45);
   const ciphertext = ciphertextBytes.slice(45);
 
-  const skBytes = fromHex(recipientSkHex);
-  const skBigInt = BigInt("0x" + toHex(skBytes));
+  const skBigInt = BigInt(toHex(recipientSkBytes, true));
   const shared_point = ephPk.multiply(skBigInt);
   let shared = shared_point.toRawBytes(true);
   const aesKey = await hkdf(shared, cryptoAPI);
@@ -107,89 +200,6 @@ async function _decrypt(
     ciphertext as BufferSource
   );
   return new Uint8Array(plaintextBuffer);
-}
-
-export async function encrypt(
-  message: string,
-  recipientPubHex: string,
-  cryptoAPI: Crypto
-): Promise<string> {
-  const encoded = new TextEncoder().encode(message);
-  const out = await _encrypt(encoded, recipientPubHex, cryptoAPI);
-  return toHex(out);
-}
-
-export async function decrypt(
-  ciphertextHex: string,
-  recipientSkHex: string,
-  cryptoAPI: Crypto
-): Promise<string> {
-  const decrypted = await _decrypt(
-    fromHex(ciphertextHex),
-    recipientSkHex,
-    cryptoAPI
-  );
-  return new TextDecoder().decode(decrypted);
-}
-
-export async function encryptPadded(
-  message: string | Uint8Array,
-  recipientPubHex: string,
-  cryptoAPI: Crypto,
-  paddedLength: number
-): Promise<string> {
-  if (paddedLength < message.length + 4) {
-    throw new Error(
-      `Invalid padded length ${paddedLength} bytes, expected at least ${
-        message.length + 4
-      } bytes)`
-    );
-  }
-  let encoded = new Uint8Array(paddedLength);
-
-  // prepend with the message length info in little endian (4 bytes)
-  const buffer = new ArrayBuffer(4);
-  const view = new DataView(buffer);
-  view.setUint32(0, message.length, true);
-  encoded.set(new Uint8Array(buffer), 0);
-
-  const encodedMessage = message instanceof Uint8Array ? message : new TextEncoder().encode(message);
-
-  encoded.set(encodedMessage, 4);
-  const encrypted = await _encrypt(encoded, recipientPubHex, cryptoAPI);
-  return toHex(encrypted);
-}
-
-export async function decryptPadded(
-  ciphertextHex: string,
-  recipientSkHex: string,
-  cryptoAPI: Crypto,
-  paddedLength: number
-): Promise<string> {
-  const decrypted = await _decrypt(
-    fromHex(ciphertextHex),
-    recipientSkHex,
-    cryptoAPI
-  );
-  if (decrypted.length != paddedLength) {
-    throw new Error(
-      `Invalid padded length ${decrypted.length} bytes, expected ${paddedLength} bytes)`
-    );
-  }
-  return decodePadded(decrypted);
-}
-
-export async function decryptPaddedUnchecked(
-  ciphertextHex: string,
-  recipientSkHex: string,
-  cryptoAPI: Crypto
-): Promise<string> {
-  const decrypted = await _decrypt(
-    fromHex(ciphertextHex),
-    recipientSkHex,
-    cryptoAPI
-  );
-  return await decodePadded(decrypted);
 }
 
 async function decodePadded(paddedMessage: Uint8Array): Promise<string> {
