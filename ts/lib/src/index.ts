@@ -1,6 +1,4 @@
 import * as secp from "@noble/secp256k1";
-import { TextEncoder, TextDecoder } from "util";
-
 
 export function toHex(uint8: Uint8Array): string {
   return Array.from(uint8)
