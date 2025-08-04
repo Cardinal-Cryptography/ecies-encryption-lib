@@ -92,7 +92,7 @@ pub fn encrypt(message: &[u8], recipient_pub_key: &PubKey) -> Result<Vec<u8>> {
 pub fn decrypt(ciphertext_bytes: &[u8], recipient_priv_key: &PrivKey) -> Result<Vec<u8>> {
     if ciphertext_bytes.len() < 45 {
         return Err(Error::CryptoInvalidLength(format!(
-            "Invalid ciphertext length {} bytes. Expected at least 45 bytes.",
+            "Invalid ciphertext length {} bytes, expected at least 45 bytes.",
             ciphertext_bytes.len()
         )));
     }
