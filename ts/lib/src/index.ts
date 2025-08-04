@@ -194,6 +194,11 @@ async function _decrypt(
   recipientSkBytes: Uint8Array,
   cryptoAPI: Crypto
 ): Promise<Uint8Array> {
+  if (ciphertextBytes.length < 45) {
+    throw new Error(
+      `Invalid ciphertext length ${ciphertextBytes.length} bytes, expected at least 45 bytes`
+    );
+  }
   const ephPk = secp.Point.fromHex(ciphertextBytes.slice(0, 33));
   const iv = ciphertextBytes.slice(33, 45);
   const ciphertext = ciphertextBytes.slice(45);

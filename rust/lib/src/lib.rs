@@ -91,12 +91,14 @@ pub fn encrypt(message: &[u8], recipient_pub_key: &PubKey) -> Result<Vec<u8>> {
 
 pub fn decrypt(ciphertext_bytes: &[u8], recipient_priv_key: &PrivKey) -> Result<Vec<u8>> {
     if ciphertext_bytes.len() < 45 {
-        return Err(Error::CryptoInvalidLength("Ciphertext too short".to_string()));
+        return Err(Error::CryptoInvalidLength(format!(
+            "Invalid ciphertext length {} bytes. Expected at least 45 bytes.",
+            ciphertext_bytes.len()
+        )));
     }
-    let data = ciphertext_bytes;
-    let eph_pk = PublicKey::from_sec1_bytes(&data[..33])?;
-    let iv = &data[33..45];
-    let ciphertext = &data[45..];
+    let eph_pk = PublicKey::from_sec1_bytes(&ciphertext_bytes[..33])?;
+    let iv = &ciphertext_bytes[33..45];
+    let ciphertext = &ciphertext_bytes[45..];
     let recipient_sk = recipient_priv_key.key.clone();
 
     let shared_secret = derive_shared_secret(&recipient_sk, &eph_pk);
