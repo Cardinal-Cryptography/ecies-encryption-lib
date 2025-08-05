@@ -1,0 +1,54 @@
+name: Publish to NPM
+
+on:
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: 'git ref: hash, branch, tag to publish from'
+        type: string
+        required: true
+        default: 'main'
+      tag:
+        description: "NPM tag"
+        required: true
+        type: choice
+        options:
+          - develop
+          - latest
+        default: 'latest'
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.ref }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '23'
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: latest
+
+      - name: Install dependencies
+        run: pnpm install
+
+      - name: Build the library
+        run: pnpm --filter ./ts/lib... build
+
+      - name: Display version
+        working-directory: ./ts/lib
+        run: echo "Publishing version $(node -p "require('./package.json').version")"
+
+      - name: Publish to NPM
+        working-directory: ./ts/lib
+        run: npm publish --access public --tag ${{ github.event.inputs.tag }}
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
