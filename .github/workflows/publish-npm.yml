@@ -16,10 +16,6 @@ on:
           - develop
           - latest
         default: 'latest'
-      dry_run:
-        description: 'Perform a dry run (no actual publish)'
-        type: boolean
-        default: false
 
 jobs:
   publish:
@@ -53,12 +49,6 @@ jobs:
 
       - name: Publish to NPM
         working-directory: ./ts/lib
-        run: |
-          if [ "${{ github.event.inputs.dry_run }}" == "true" ]; then
-            echo "DRY RUN: Would publish with command: npm publish --access public --tag ${{ github.event.inputs.tag }}"
-            npm publish --dry-run --access public --tag ${{ github.event.inputs.tag }}
-          else
-            npm publish --access public --tag ${{ github.event.inputs.tag }}
-          fi
+        run: npm publish --access public --tag ${{ github.event.inputs.tag }}
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
