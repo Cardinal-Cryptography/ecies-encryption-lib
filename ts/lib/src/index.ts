@@ -151,8 +151,8 @@ export async function decrypt(
 export async function encryptPadded(
   messageBytes: Uint8Array | string,
   recipientPubKeyBytes: Uint8Array | string,
-  cryptoAPI: Crypto,
-  paddedLength: number
+  paddedLength: number,
+  cryptoAPI?: Crypto
 ): Promise<Uint8Array> {
   const encodedMessage = ensureBytes(messageBytes);
   if (paddedLength < encodedMessage.length + 4) {
@@ -191,8 +191,8 @@ export async function encryptPadded(
 export async function decryptPadded(
   ciphertextBytes: Uint8Array | string,
   recipientSkBytes: Uint8Array | string,
-  cryptoAPI: Crypto,
-  paddedLength: number
+  paddedLength: number,
+  cryptoAPI?: Crypto
 ): Promise<Uint8Array> {
   const decrypted = await _decrypt(
     ensureBytes(ciphertextBytes),
@@ -220,7 +220,7 @@ export async function decryptPadded(
 export async function decryptPaddedUnchecked(
   ciphertextBytes: Uint8Array | string,
   recipientSkBytes: Uint8Array | string,
-  cryptoAPI: Crypto
+  cryptoAPI?: Crypto
 ): Promise<Uint8Array> {
   const decrypted = await _decrypt(
     ensureBytes(ciphertextBytes),

@@ -57,7 +57,7 @@ program
   .action(async (opts: { message: string; pubkey: string; paddedLength: number }) => {
     const cryptoAPI = await getCrypto();
     const messageBytes = new TextEncoder().encode(opts.message);
-    const encrypted = await encryptPadded(messageBytes, opts.pubkey, cryptoAPI, opts.paddedLength);
+    const encrypted = await encryptPadded(messageBytes, opts.pubkey, opts.paddedLength, cryptoAPI);
     const encryptedHex = toHexString(encrypted);
     console.log(encryptedHex);
   });
