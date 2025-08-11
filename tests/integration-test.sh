@@ -23,6 +23,7 @@ eval "$($JS generate-keypair | tee /dev/stderr | awk '
 
 # Encrypt in JS
 JS_CIPHERTEXT=$($JS encrypt --pubkey "$JS_PK" --message "$MSG")
+echo "JS ciphertext: $JS_CIPHERTEXT"
 
 # Decrypt in Rust
 RUST_OUTPUT=$($RUST decrypt --privkey "$JS_SK" --ciphertext "$JS_CIPHERTEXT")
@@ -48,11 +49,11 @@ eval "$($RUST generate-keypair | tee /dev/stderr | awk '
 
 # Encrypt in Rust
 RUST_CIPHERTEXT=$($RUST encrypt --pubkey "$RUST_PK" --message "$MSG" | tail -n1)
-
 echo "Rust ciphertext: $RUST_CIPHERTEXT"
 
 # Decrypt in JS
 JS_OUTPUT=$($JS decrypt --privkey "$RUST_SK" --ciphertext "$RUST_CIPHERTEXT")
+echo "JS output: $JS_OUTPUT"
 
 if [[ "$JS_OUTPUT" == "$MSG" ]]; then
   echo "✅ Rust → JS decryption success"
@@ -74,6 +75,7 @@ eval "$($JS generate-keypair | tee /dev/stderr | awk '
 
 # Encrypt in JS
 JS_CIPHERTEXT=$($JS encrypt-padded --pubkey "$JS_PK" --message "$MSG" --padded-length $PADDED_LENGTH)
+echo "JS ciphertext: $JS_CIPHERTEXT"
 
 # Decrypt in Rust
 RUST_OUTPUT=$($RUST decrypt-padded --privkey "$JS_SK" --ciphertext "$JS_CIPHERTEXT")
@@ -99,11 +101,11 @@ eval "$($RUST generate-keypair | tee /dev/stderr | awk '
 
 # Encrypt in Rust
 RUST_CIPHERTEXT=$($RUST encrypt-padded --pubkey "$RUST_PK" --message "$MSG" --padded-length $PADDED_LENGTH | tail -n1)
-
 echo "Rust ciphertext: $RUST_CIPHERTEXT"
 
 # Decrypt in JS
 JS_OUTPUT=$($JS decrypt-padded --privkey "$RUST_SK" --ciphertext "$RUST_CIPHERTEXT")
+echo "JS output: $JS_OUTPUT"
 
 if [[ "$JS_OUTPUT" == "$MSG" ]]; then
   echo "✅ Rust → JS padded decryption success"
