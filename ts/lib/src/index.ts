@@ -20,7 +20,7 @@ export function generateKeypair(): Keypair {
  * @throws Error if the private key length is not 32 bytes.
  */
 export function publicKeyFromPrivateKey(sk: Uint8Array | string): Uint8Array {
-  const privateKey = ensureBytes(sk);
+  const privateKey = convertToBytes(sk);
   if (privateKey.length !== 32) {
     throw new Error("Invalid private key length, expected 32 bytes");
   }
@@ -67,24 +67,23 @@ export function fromHexString(hex: string): Uint8Array {
   }
   const bytes = new Uint8Array(hex.length / 2);
   for (let i = 0; i < hex.length; i += 2) {
-    try {
-      bytes[i / 2] = parseInt(hex.slice(i, i + 2), 16);
-    } catch {
+    const byte = parseInt(hex.slice(i, i + 2), 16);
+    if (isNaN(byte)) {
       throw new Error("Failed to parse hex string");
     }
+    bytes[i / 2] = byte;
   }
   return bytes;
 }
 
 /**
- * Ensures that the input is a Uint8Array.
+ * Converts the input to a Uint8Array.
  * If the input is a hex string, it converts it to a Uint8Array.
  * If the input is already a Uint8Array, it returns it as is.
- * @param {Uint8Array | string} hex The input to ensure is a Uint8Array. It can be a hex string or a Uint8Array.
+ * @param {Uint8Array | string} hex The input to convert to a Uint8Array. It can be a hex string or a Uint8Array.
  * @returns {Uint8Array} A Uint8Array representation of the input.
  */
-export function ensureBytes(hex: Uint8Array | string): Uint8Array {
-  
+export function convertToBytes(hex: Uint8Array | string): Uint8Array {
   return isBytes(hex)
     ? Uint8Array.from(hex as Uint8Array)
     : fromHexString(hex as string);
@@ -109,10 +108,10 @@ export async function encrypt(
   recipientPubKeyBytes: Uint8Array | string,
   cryptoAPI?: Crypto
 ): Promise<Uint8Array> {
-  const encoded = ensureBytes(messageBytes);
+  const encoded = convertToBytes(messageBytes);
   const out = await _encrypt(
     encoded,
-    ensureBytes(recipientPubKeyBytes),
+    convertToBytes(recipientPubKeyBytes),
     cryptoAPI
   );
   return out;
@@ -131,8 +130,8 @@ export async function decrypt(
   cryptoAPI?: Crypto
 ): Promise<Uint8Array> {
   const decrypted = await _decrypt(
-    ensureBytes(ciphertextBytes),
-    ensureBytes(recipientSkBytes),
+    convertToBytes(ciphertextBytes),
+    convertToBytes(recipientSkBytes),
     cryptoAPI
   );
   return decrypted;
@@ -154,7 +153,7 @@ export async function encryptPadded(
   paddedLength: number,
   cryptoAPI?: Crypto
 ): Promise<Uint8Array> {
-  const encodedMessage = ensureBytes(messageBytes);
+  const encodedMessage = convertToBytes(messageBytes);
   if (paddedLength < encodedMessage.length + 4) {
     throw new Error(
       `Invalid padded length ${paddedLength} bytes, expected at least ${
@@ -167,13 +166,13 @@ export async function encryptPadded(
   // prepend with the message length info in little endian (4 bytes)
   const buffer = new ArrayBuffer(4);
   const view = new DataView(buffer);
-  view.setUint32(0, messageBytes.length, true);
+  view.setUint32(0, encodedMessage.length, true);
   encoded.set(new Uint8Array(buffer), 0);
 
   encoded.set(encodedMessage, 4);
   const encrypted = await _encrypt(
     encoded,
-    ensureBytes(recipientPubKeyBytes),
+    convertToBytes(recipientPubKeyBytes),
     cryptoAPI
   );
   return encrypted;
@@ -195,8 +194,8 @@ export async function decryptPadded(
   cryptoAPI?: Crypto
 ): Promise<Uint8Array> {
   const decrypted = await _decrypt(
-    ensureBytes(ciphertextBytes),
-    ensureBytes(recipientSkBytes),
+    convertToBytes(ciphertextBytes),
+    convertToBytes(recipientSkBytes),
     cryptoAPI
   );
   if (decrypted.length != paddedLength) {
@@ -223,8 +222,8 @@ export async function decryptPaddedUnchecked(
   cryptoAPI?: Crypto
 ): Promise<Uint8Array> {
   const decrypted = await _decrypt(
-    ensureBytes(ciphertextBytes),
-    ensureBytes(recipientSkBytes),
+    convertToBytes(ciphertextBytes),
+    convertToBytes(recipientSkBytes),
     cryptoAPI
   );
   return await decodePadded(decrypted);
