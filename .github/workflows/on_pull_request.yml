@@ -18,6 +18,9 @@ jobs:
           with:
             version: 10.2.0
                 
+        - name: TS Unit tests
+          run: pnpm install && pnpm build && pnpm unit-test
+
         - name: Integration tests
           shell: bash
           run: ./tests/integration-test.sh

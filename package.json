@@ -22,7 +22,8 @@
   },
   "scripts": {
     "build": "pnpm --filter ./ts/lib... build",
-    "prepare": "pnpm run build"
+    "prepare": "pnpm run build",
+    "unit-test": "tsx tests/ts-lib-unit-test.test.ts"
   },
   "devDependencies": {
     "@types/node": "^24.0.4",
