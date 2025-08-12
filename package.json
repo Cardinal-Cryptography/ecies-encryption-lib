@@ -1,7 +1,7 @@
 {
   "name": "@cardinal-cryptography/ecies-encryption-lib",
   "author": "CardinalCryptography",
-  "version": "0.1.7",
+  "version": "0.2.0",
   "description": "ECIES encryption library (proxy to ts/lib)",
   "main": "ts/lib/dist/index.js",
   "types": "ts/lib/dist/index.d.ts",
