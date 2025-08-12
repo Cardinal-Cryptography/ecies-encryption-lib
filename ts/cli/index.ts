@@ -3,12 +3,13 @@
 import { Command } from "commander";
 import {
   generateKeypair,
-  toHex,
+  toHexString,
   getCrypto,
   encrypt,
   decrypt,
   encryptPadded,
-  decryptPaddedUnchecked
+  decryptPaddedUnchecked,
+  decryptPadded
 } from "@cardinal-cryptography/ecies-encryption-lib";
 
 const program = new Command();
@@ -19,8 +20,8 @@ program
   .description("Generate a new secp256k1 keypair")
   .action(() => {
     const { sk, pk } = generateKeypair();
-    console.log("Private key:", toHex(sk));
-    console.log("Public key: ", toHex(pk));
+    console.log("Private key:", toHexString(sk));
+    console.log("Public key: ", toHexString(pk));
   });
 
 program
@@ -30,8 +31,10 @@ program
   .requiredOption("-m, --message <text>", "Plaintext message to encrypt")
   .action(async (opts: { message: string; pubkey: string }) => {
     const cryptoAPI = await getCrypto();
-    const hex = await encrypt(opts.message, opts.pubkey, cryptoAPI);
-    console.log(hex);
+    const messageBytes = new TextEncoder().encode(opts.message);
+    const encrypted = await encrypt(messageBytes, opts.pubkey, cryptoAPI);
+    const encryptedHex = toHexString(encrypted);
+    console.log(encryptedHex);
   });
 
 program
@@ -42,7 +45,8 @@ program
   .action(async (opts: { privkey: string; ciphertext: string }) => {
     const cryptoAPI = await getCrypto();
     const result = await decrypt(opts.ciphertext, opts.privkey, cryptoAPI);
-    console.log(result);
+    const decryptedMessage = new TextDecoder().decode(result);
+    console.log(decryptedMessage);
   });
 
   program
@@ -53,8 +57,10 @@ program
   .requiredOption("--padded-length <number>", "Padded length of the message")
   .action(async (opts: { message: string; pubkey: string; paddedLength: number }) => {
     const cryptoAPI = await getCrypto();
-    const hex = await encryptPadded(opts.message, opts.pubkey, cryptoAPI, opts.paddedLength);
-    console.log(hex);
+    const messageBytes = new TextEncoder().encode(opts.message);
+    const encrypted = await encryptPadded(messageBytes, opts.pubkey, opts.paddedLength, cryptoAPI);
+    const encryptedHex = toHexString(encrypted);
+    console.log(encryptedHex);
   });
 
 program
@@ -62,10 +68,24 @@ program
   .description("Decrypt a ciphertext with a private key")
   .requiredOption("-k, --privkey <hex>", "Private key (hex)")
   .requiredOption("-c, --ciphertext <hex>", "Ciphertext (hex)")
+  .requiredOption("--padded-length <number>", "Padded length of the message")
+  .action(async (opts: { privkey: string; ciphertext: string; paddedLength: number }) => {
+    const cryptoAPI = await getCrypto();
+    const result = await decryptPadded(opts.ciphertext, opts.privkey, opts.paddedLength, cryptoAPI);
+    const decryptedMessage = new TextDecoder().decode(result);
+    console.log(decryptedMessage);
+  });
+
+program
+  .command("decrypt-padded-unchecked")
+  .description("Decrypt a ciphertext with a private key")
+  .requiredOption("-k, --privkey <hex>", "Private key (hex)")
+  .requiredOption("-c, --ciphertext <hex>", "Ciphertext (hex)")
   .action(async (opts: { privkey: string; ciphertext: string }) => {
     const cryptoAPI = await getCrypto();
     const result = await decryptPaddedUnchecked(opts.ciphertext, opts.privkey, cryptoAPI);
-    console.log(result);
+    const decryptedMessage = new TextDecoder().decode(result);
+    console.log(decryptedMessage);
   });
 
 program
@@ -74,18 +94,21 @@ program
   .action(async () => {
     const cryptoAPI = await getCrypto();
     const { sk, pk } = generateKeypair();
-    const skHex = toHex(sk);
-    const pkHex = toHex(pk);
+    const skHex = toHexString(sk);
+    const pkHex = toHexString(pk);
 
     console.log("Private key:", skHex);
     console.log("Public key: ", pkHex);
 
     const message = "hello from TypeScript";
-    const ciphertext = await encrypt(message, pkHex, cryptoAPI);
-    console.log("Ciphertext:", ciphertext);
+    const messageBytes = new TextEncoder().encode(message);
+    const ciphertext = await encrypt(messageBytes, pkHex, cryptoAPI);
+    const ciphertextHex = toHexString(ciphertext);
+    console.log("Ciphertext:", ciphertextHex);
 
-    const decrypted = await decrypt(ciphertext, skHex, cryptoAPI);
-    console.log("Decrypted:", decrypted);
+    const decrypted = await decrypt(ciphertextHex, skHex, cryptoAPI);
+    const decryptedMessage = new TextDecoder().decode(decrypted);
+    console.log("Decrypted:", decryptedMessage);
   });
 
 program.parseAsync();

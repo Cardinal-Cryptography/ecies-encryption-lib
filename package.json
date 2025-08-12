@@ -1,7 +1,7 @@
 {
   "name": "@cardinal-cryptography/ecies-encryption-lib",
   "author": "CardinalCryptography",
-  "version": "0.1.6",
+  "version": "0.2.0",
   "description": "ECIES encryption library (proxy to ts/lib)",
   "main": "ts/lib/dist/index.js",
   "types": "ts/lib/dist/index.d.ts",
@@ -22,7 +22,8 @@
   },
   "scripts": {
     "build": "pnpm --filter ./ts/lib... build",
-    "prepare": "pnpm run build"
+    "prepare": "pnpm run build",
+    "unit-test": "tsx tests/ts-lib-unit-test.test.ts"
   },
   "devDependencies": {
     "@types/node": "^24.0.4",

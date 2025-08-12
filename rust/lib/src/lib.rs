@@ -42,8 +42,14 @@ impl PrivKey {
     pub fn to_bytes(&self) -> Vec<u8> {
         self.key.to_bytes().to_vec()
     }
+
+    pub fn public_key(&self) -> PubKey {
+        let pk = self.key.public_key();
+        PubKey { key: pk }
+    }
 }
 
+/// Generates a new secp256k1 keypair (private and public key).
 pub fn generate_keypair() -> (PrivKey, PubKey) {
     let sk = SecretKey::random(&mut OsRng);
     let pk = sk.public_key();
@@ -67,7 +73,8 @@ fn hkdf_expand(shared_secret: &[u8]) -> Result<[u8; 32]> {
     Ok(okm)
 }
 
-pub fn encrypt(message: &[u8], recipient_pub_key: &PubKey) -> Result<Vec<u8>> {
+/// Encrypts a message using the recipient's public key.
+pub fn encrypt(message_bytes: &[u8], recipient_pub_key: &PubKey) -> Result<Vec<u8>> {
     let recipient_pk = &recipient_pub_key.key;
     let eph_sk = SecretKey::random(&mut OsRng);
     let eph_pk = eph_sk.public_key();
@@ -80,7 +87,7 @@ pub fn encrypt(message: &[u8], recipient_pub_key: &PubKey) -> Result<Vec<u8>> {
     OsRng.fill_bytes(&mut iv);
     let nonce = Nonce::from_slice(&iv);
 
-    let ciphertext = cipher.encrypt(nonce, message)?;
+    let ciphertext = cipher.encrypt(nonce, message_bytes)?;
 
     let mut output = vec![];
     output.extend(eph_pk.to_encoded_point(true).as_bytes());
@@ -89,6 +96,7 @@ pub fn encrypt(message: &[u8], recipient_pub_key: &PubKey) -> Result<Vec<u8>> {
     Ok(output)
 }
 
+/// Decrypts a ciphertext using the recipient's private key.
 pub fn decrypt(ciphertext_bytes: &[u8], recipient_priv_key: &PrivKey) -> Result<Vec<u8>> {
     if ciphertext_bytes.len() < 45 {
         return Err(Error::CryptoInvalidLength(format!(
@@ -110,65 +118,72 @@ pub fn decrypt(ciphertext_bytes: &[u8], recipient_priv_key: &PrivKey) -> Result<
     Ok(decrypted_bytes)
 }
 
+/// Encrypts a message with padding to a specified length.
+/// The first 4 bytes of the encrypted message will contain the original message length in little-endian format.
 pub fn encrypt_padded(
-    message: &[u8],
+    message_bytes: &[u8],
     recipient_pub_key: &PubKey,
     padded_length: usize,
 ) -> Result<Vec<u8>> {
-    if padded_length < message.len() + 4 {
+    if padded_length < message_bytes.len() + 4 {
         return Err(Error::InvalidPaddedLength {
             found: padded_length,
-            expected: message.len() + 4,
+            expected: message_bytes.len() + 4,
         });
     }
     // prepend with the message length info in little endian (4 bytes)
-    let mut padded_message = (message.len() as u32).to_le_bytes().to_vec();
-    padded_message.extend(message);
-    padded_message.resize(padded_length, 0u8);
-    encrypt(&padded_message, recipient_pub_key)
+    let mut padded_message_bytes = (message_bytes.len() as u32).to_le_bytes().to_vec();
+    padded_message_bytes.extend(message_bytes);
+    padded_message_bytes.resize(padded_length, 0u8);
+    encrypt(&padded_message_bytes, recipient_pub_key)
 }
 
+/// Decrypts a padded ciphertext with a private key.
+/// The first 4 bytes of the encrypted message should contain the original message length in little-endian format.
+/// This function does not check if the decrypted message length matches the expected padded length.
 pub fn decrypt_padded_unchecked(
     ciphertext_bytes: &[u8],
     recipient_priv_key: &PrivKey,
 ) -> Result<Vec<u8>> {
-    let padded_message = decrypt(ciphertext_bytes, recipient_priv_key)?;
-    _decode_padded(&padded_message)
+    let padded_message_bytes = decrypt(ciphertext_bytes, recipient_priv_key)?;
+    _decode_padded(&padded_message_bytes)
 }
 
+/// Decrypts a padded ciphertext with a private key.
+/// The first 4 bytes of the encrypted message should contain the original message length in little-endian format.
 pub fn decrypt_padded(
     ciphertext_bytes: &[u8],
     recipient_priv_key: &PrivKey,
     padded_length: usize,
 ) -> Result<Vec<u8>> {
-    let padded_message = decrypt(ciphertext_bytes, recipient_priv_key)?;
-    if padded_message.len() != padded_length {
+    let padded_message_bytes = decrypt(ciphertext_bytes, recipient_priv_key)?;
+    if padded_message_bytes.len() != padded_length {
         return Err(Error::InvalidPaddedLength {
-            found: padded_message.len(),
+            found: padded_message_bytes.len(),
             expected: padded_length,
         });
     }
-    _decode_padded(&padded_message)
+    _decode_padded(&padded_message_bytes)
 }
 
-fn _decode_padded(padded_message: &[u8]) -> Result<Vec<u8>> {
+fn _decode_padded(padded_message_bytes: &[u8]) -> Result<Vec<u8>> {
     // decode the original message length
-    let message_length = u32::from_le_bytes(
-        padded_message
+    let message_bytes_length = u32::from_le_bytes(
+        padded_message_bytes
             .get(..4)
             .ok_or(Error::InvalidPaddedLength {
-                found: padded_message.len(),
+                found: padded_message_bytes.len(),
                 expected: 4,
             })?
             .try_into()
             .map_err(|_| Error::Decoding("Message length".to_string()))?,
     ) as usize;
     // extract the original message
-    padded_message
-        .get(4..(message_length + 4))
+    padded_message_bytes
+        .get(4..(message_bytes_length + 4))
         .ok_or(Error::InvalidMessageLength {
-            found: message_length,
-            expected: padded_message.len() - 4,
+            found: message_bytes_length,
+            expected: padded_message_bytes.len() - 4,
         })
         .map(|m| m.to_vec())
 }
