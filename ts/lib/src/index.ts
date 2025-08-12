@@ -108,9 +108,8 @@ export async function encrypt(
   recipientPubKeyBytes: Uint8Array | string,
   cryptoAPI?: Crypto
 ): Promise<Uint8Array> {
-  const encoded = convertToBytes(messageBytes);
   const out = await _encrypt(
-    encoded,
+    convertToBytes(messageBytes),
     convertToBytes(recipientPubKeyBytes),
     cryptoAPI
   );
