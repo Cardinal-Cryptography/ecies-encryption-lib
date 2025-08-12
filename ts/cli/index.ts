@@ -8,7 +8,8 @@ import {
   encrypt,
   decrypt,
   encryptPadded,
-  decryptPaddedUnchecked
+  decryptPaddedUnchecked,
+  decryptPadded
 } from "@cardinal-cryptography/ecies-encryption-lib";
 
 const program = new Command();
@@ -64,6 +65,19 @@ program
 
 program
   .command("decrypt-padded")
+  .description("Decrypt a ciphertext with a private key")
+  .requiredOption("-k, --privkey <hex>", "Private key (hex)")
+  .requiredOption("-c, --ciphertext <hex>", "Ciphertext (hex)")
+  .requiredOption("--padded-length <number>", "Padded length of the message")
+  .action(async (opts: { privkey: string; ciphertext: string; paddedLength: number }) => {
+    const cryptoAPI = await getCrypto();
+    const result = await decryptPadded(opts.ciphertext, opts.privkey, opts.paddedLength, cryptoAPI);
+    const decryptedMessage = new TextDecoder().decode(result);
+    console.log(decryptedMessage);
+  });
+
+program
+  .command("decrypt-padded-unchecked")
   .description("Decrypt a ciphertext with a private key")
   .requiredOption("-k, --privkey <hex>", "Private key (hex)")
   .requiredOption("-c, --ciphertext <hex>", "Ciphertext (hex)")

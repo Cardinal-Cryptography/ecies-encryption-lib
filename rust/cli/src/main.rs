@@ -1,7 +1,8 @@
 use anyhow::{Context, Result};
 use clap::{Parser, Subcommand};
 use ecies_encryption_lib::{
-    PrivKey, PubKey, decrypt, decrypt_padded_unchecked, encrypt, encrypt_padded, generate_keypair,
+    PrivKey, PubKey, decrypt, decrypt_padded, decrypt_padded_unchecked, encrypt, encrypt_padded,
+    generate_keypair,
     utils::{from_hex, to_hex},
 };
 
@@ -89,6 +90,21 @@ enum Commands {
         /// Ciphertext in hex (or file path if --file is passed)
         #[arg(short, long)]
         ciphertext: String,
+
+        /// Padded length of the message.
+        #[arg(long)]
+        padded_length: usize,
+    },
+
+    /// Decrypt a padded ciphertext with a private key without checking padding
+    DecryptPaddedUnchecked {
+        /// Private key (hex)
+        #[arg(short, long)]
+        privkey: String,
+
+        /// Ciphertext in hex (or file path if --file is passed)
+        #[arg(short, long)]
+        ciphertext: String,
     },
     Example,
 }
@@ -141,6 +157,21 @@ fn main() -> Result<()> {
             println!("{}", to_hex(&ciphertext));
         }
         Commands::DecryptPadded {
+            privkey,
+            ciphertext,
+            padded_length,
+        } => {
+            let privkey_bytes = from_hex(&privkey).context("Invalid private key hex")?;
+            let privkey =
+                PrivKey::from_bytes(&privkey_bytes).context("Failed to parse private key")?;
+
+            let ciphertext_bytes = from_hex(&ciphertext).context("Invalid ciphertext hex")?;
+
+            let decrypted = decrypt_padded(&ciphertext_bytes, &privkey, padded_length)
+                .context("Decryption failed")?;
+            println!("{}", String::from_utf8(decrypted)?);
+        }
+        Commands::DecryptPaddedUnchecked {
             privkey,
             ciphertext,
         } => {
